@@ -2,30 +2,32 @@ use std::error::Error;
 use std::thread;
 use std::time::Duration;
 
-use rppal::gpio::Gpio;
 use rppal::i2c::I2c;
 
-const ADDR: u16 = 0x62;
-const GPIO_ISR: u8 = 16;
+const ADDR: u16 = 0x20;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut i2c = I2c::new()?;
-    let mut pin = Gpio::new()?.get(GPIO_ISR)?.into_input();
+
+    let clock = i2c.clock_speed()?;
+
+    println!("clock = {:#?}", clock);
+
+    i2c.set_timeout(5000)?;
 
     // Set the I2C slave address to the device we're communicating with.
     i2c.set_slave_address(ADDR)?;
 
-    let mut buf = [0u8; 5];
-
-    pin.set_interrupt(rppal::gpio::Trigger::RisingEdge, None);
+    let init_cmd = [0xBE];
+    let magic_cmd = [0xEF];
 
     loop {
-        if let Ok(Some(_)) = pin.poll_interrupt(false, Some(Duration::from_millis(100))) {
-            i2c.read(&mut buf)?;
+        i2c.write(&init_cmd)?;
 
-            println!("{:?}", buf);
-        } else {
-            println!("Waiting for interrupt");
-        }
+        let mut code: [u8; 4] = [0xAA; 4];
+        i2c.write_read(&magic_cmd, &mut code)?;
+
+        println!("magic code = {:#x?}", code);
+        thread::sleep(Duration::from_secs(1));
     }
 }
