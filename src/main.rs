@@ -18,8 +18,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Set the I2C slave address to the device we're communicating with.
     i2c.set_slave_address(ADDR)?;
 
-    let init_cmd = [0xBE];
-    let magic_cmd = [0xEF];
+    let init_cmd = [0xDE, 0xAD, 0xBE, 0xEF];
+    let magic_cmd = [0xDE, 0xCA, 0xFB, 0xAD];
 
     loop {
         i2c.write(&init_cmd)?;
@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut code: [u8; 4] = [0xAA; 4];
         i2c.write_read(&magic_cmd, &mut code)?;
 
-        println!("magic code = {:#x?}", code);
+        println!("magic code = {:02x?}", code);
         thread::sleep(Duration::from_secs(1));
     }
 }
